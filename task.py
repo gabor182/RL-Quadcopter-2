@@ -33,7 +33,7 @@ class Task():
         error_position = np.clip(np.linalg.norm(abs(self.target_pos - self.sim.pose[:3])), 0, 1)
         error_velocity = np.clip(np.linalg.norm(self.sim.angular_v), 0, 1)
         
-        reward = 1 - 0.5*error_position - 0.5*error_velocity + 0.1* self.sim.v[0] + 0.1* self.sim.v[1] + 0.2*self.sim.v[2]
+        reward = 1 - error_position - error_velocity + 0.1* self.sim.v[0] + 0.1* self.sim.v[1] + 0.2*self.sim.v[2]
         
         # penalize "out-of-bounds" position more aggressively
         if (self.sim.pose[0] + epsilon) > self.target_pos[0] or (self.sim.pose[1] + epsilon) > self.target_pos[1] or (self.sim.pose[2] + epsilon) > self.target_pos[2]:
