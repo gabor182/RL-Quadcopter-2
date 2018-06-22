@@ -26,13 +26,27 @@ class Task():
         # Goal
         self.target_pos = target_pos if target_pos is not None else np.array([0., 0., 10.]) 
 
-    def get_reward(self):
+    def get_reward(self, done):
         """Uses current pose of sim to return reward."""
         
-        error_position = np.linalg.norm(abs(self.target_pos - self.sim.pose[:3]))
-        error_velocity = np.linalg.norm(self.sim.angular_v)
+        epsilon = 0.5 # tolerance for not positioning perfectly
+        error_position = np.clip(np.linalg.norm(abs(self.target_pos - self.sim.pose[:3])), 0, 1)
+        error_velocity = np.clip(np.linalg.norm(self.sim.angular_v), 0, 1)
         
-        reward = min(self.sim.v[:2].sum(), 10) - (0.3 * error_position + 0.3 * error_velocity)
+        reward = 1 - 0.5*error_position - 0.5*error_velocity + 0.1* self.sim.v[0] + 0.1* self.sim.v[1] + 0.2*self.sim.v[2]
+        
+        # penalize "out-of-bounds" position more aggressively
+        if (self.sim.pose[0] + epsilon) > self.target_pos[0] or (self.sim.pose[1] + epsilon) > self.target_pos[1] or (self.sim.pose[2] + epsilon) > self.target_pos[2]:
+            reward -= 5
+        
+        # reward precise positioning
+        if abs(self.sim.pose[0] - self.target_pos[0]) <= epsilon and abs(self.sim.pose[1] - self.target_pos[1]) <= epsilon  and abs(self.sim.pose[2] + self.target_pos[2]) <= epsilon:
+            reward += 10
+        
+        # penalize crash
+        if done and self.sim.time < self.sim.runtime: 
+            reward = -10
+        
         return reward
 
     def step(self, rotor_speeds):
@@ -41,7 +55,7 @@ class Task():
         pose_all = []
         for _ in range(self.action_repeat):
             done = self.sim.next_timestep(rotor_speeds) # update the sim pose and velocities
-            reward += self.get_reward() 
+            reward += self.get_reward(done) 
             pose_all.append(self.sim.pose)
         next_state = np.concatenate(pose_all)
         return next_state, reward, done
