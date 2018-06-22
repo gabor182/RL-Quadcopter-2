@@ -29,23 +29,23 @@ class Task():
     def get_reward(self, done):
         """Uses current pose of sim to return reward."""
         
-        epsilon = 0.5 # tolerance for not positioning perfectly
-        error_position = np.clip(np.linalg.norm(abs(self.target_pos - self.sim.pose[:3])), 0, 1)
+        epsilon = 1 # tolerance for not positioning perfectly
+        error_position = np.linalg.norm(abs(self.sim.pose[:3] - self.target_pos[:3]))
         error_velocity = np.clip(np.linalg.norm(self.sim.angular_v), 0, 1)
         
-        reward = 1 - error_position - error_velocity + 0.1* self.sim.v[0] + 0.1* self.sim.v[1] + 0.2*self.sim.v[2]
+        reward = np.clip(1 - error_position - error_velocity + 0.1* self.sim.v[0] + 0.1* self.sim.v[1] + 0.2*self.sim.v[2], -1, 1)
         
         # penalize "out-of-bounds" position more aggressively
         if (self.sim.pose[0] + epsilon) > self.target_pos[0] or (self.sim.pose[1] + epsilon) > self.target_pos[1] or (self.sim.pose[2] + epsilon) > self.target_pos[2]:
-            reward -= 5
+            reward = -0.9
         
         # reward precise positioning
-        if abs(self.sim.pose[0] - self.target_pos[0]) <= epsilon and abs(self.sim.pose[1] - self.target_pos[1]) <= epsilon  and abs(self.sim.pose[2] + self.target_pos[2]) <= epsilon:
-            reward += 10
+        if np.absolute((self.sim.pose[:3] - self.target_pos[:3]).sum()) <= epsilon:
+            reward = 1
         
         # penalize crash
         if done and self.sim.time < self.sim.runtime: 
-            reward = -10
+            reward = -1
         
         return reward
 
